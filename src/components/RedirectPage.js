@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { openDB } from 'idb';
-async function saveAudioToIndexedDB(blob) {
+// Initialize IndexedDB
+async function initializeDB() {
   try {
     const db = await openDB('audioDB', 1, {
       upgrade(db) {
@@ -9,15 +10,34 @@ async function saveAudioToIndexedDB(blob) {
         }
       },
     });
-    await db.put('audioStore', blob, 'audioBlob');
+    return db;
+  } catch (error) {
+    console.error('Error initializing IndexedDB:', error);
+    return null;
+  }
+}
+// Save audio to IndexedDB
+async function saveAudioToIndexedDB(blob) {
+  const db = await initializeDB();
+  if (!db) return;
+  try {
+    const tx = db.transaction('audioStore', 'readwrite');
+    const store = tx.objectStore('audioStore');
+    await store.put(blob, 'audioBlob');
+    await tx.complete;
   } catch (error) {
     console.error('Error saving audio to IndexedDB:', error);
   }
 }
+// Retrieve audio from IndexedDB
 async function getAudioFromIndexedDB() {
+  const db = await initializeDB();
+  if (!db) return null;
   try {
-    const db = await openDB('audioDB', 1);
-    return await db.get('audioStore', 'audioBlob');
+    const tx = db.transaction('audioStore', 'readonly');
+    const store = tx.objectStore('audioStore');
+    const audioBlob = await store.get('audioBlob');
+    return audioBlob;
   } catch (error) {
     console.error('Error retrieving audio from IndexedDB:', error);
     return null;
@@ -25,7 +45,6 @@ async function getAudioFromIndexedDB() {
 }
 function RedirectPage() {
   const email = new URLSearchParams(window.location.search).get('email');
-  
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
@@ -40,7 +59,6 @@ function RedirectPage() {
           console.log("audioChunk added", event.data);
         }
       };
-      
       mediaRecorder.onstop = async () => {
         console.log("Recording stopped, audioChunks:", audioChunks);
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
