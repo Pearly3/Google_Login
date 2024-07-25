@@ -1,17 +1,16 @@
+import React from 'react';
 import { GoogleLogin } from '@react-oauth/google';
+import { useNavigate } from 'react-router-dom';
+import jwt_decode from 'jwt-decode';
 import './App.css';
-import { useHistory } from "react-router-dom";
 function App() {
-  const history = useHistory();
+  const navigate = useNavigate();
   const responseMessage = (response) => {
     const credential = response.credential;
     const decoded = jwt_decode(credential);
     const email = decoded.email;
-    
-    // Store email in local storage
-    localStorage.setItem('email', email);
-    // Redirect to the redirect page
-    history.push('/redirect');
+    // Redirect to the redirect page with the email as a query parameter
+    navigate(`/redirect?email=${encodeURIComponent(email)}`);
   };
   const errorMessage = (error) => {
     console.log(error);
@@ -20,7 +19,6 @@ function App() {
     <div className='App'>
       <h2>React Google Sign-In</h2>
       <GoogleLogin
-        className="sign"
         onSuccess={responseMessage}
         onError={errorMessage}
       />

@@ -1,6 +1,6 @@
 import React from 'react';
 function RedirectPage() {
-  const email = localStorage.getItem('email');
+  const email = new URLSearchParams(window.location.search).get('email');
   return (
     <div>
       <h1>Redirect Page</h1>
