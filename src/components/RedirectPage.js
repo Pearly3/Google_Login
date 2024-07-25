@@ -1,42 +1,57 @@
 import React, { useState, useEffect } from 'react';
 import { openDB } from 'idb';
-// Initialize IndexedDB
+// Initialize IndexedDB with detailed logging
 async function initializeDB() {
   try {
     const db = await openDB('audioDB', 1, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('audioStore')) {
+          console.log("Creating object store 'audioStore'");
           db.createObjectStore('audioStore');
         }
       },
     });
+    console.log("Database and object store initialized");
     return db;
   } catch (error) {
     console.error('Error initializing IndexedDB:', error);
     return null;
   }
 }
-// Save audio to IndexedDB
+// Save audio blob to IndexedDB
 async function saveAudioToIndexedDB(blob) {
   const db = await initializeDB();
-  if (!db) return;
+  if (!db) {
+    console.error('DB initialization failed');
+    return;
+  }
+  
   try {
     const tx = db.transaction('audioStore', 'readwrite');
     const store = tx.objectStore('audioStore');
     await store.put(blob, 'audioBlob');
-    await tx.complete;
+    await tx.done;
+    console.log("Audio saved to IndexedDB");
   } catch (error) {
     console.error('Error saving audio to IndexedDB:', error);
   }
 }
-// Retrieve audio from IndexedDB
+// Retrieve audio blob from IndexedDB
 async function getAudioFromIndexedDB() {
   const db = await initializeDB();
-  if (!db) return null;
+  if (!db) {
+    console.error('DB initialization failed');
+    return null;
+  }
   try {
     const tx = db.transaction('audioStore', 'readonly');
     const store = tx.objectStore('audioStore');
     const audioBlob = await store.get('audioBlob');
+    if (audioBlob) {
+      console.log("Audio retrieved from IndexedDB");
+    } else {
+      console.log("No audio found in IndexedDB");
+    }
     return audioBlob;
   } catch (error) {
     console.error('Error retrieving audio from IndexedDB:', error);
@@ -45,6 +60,7 @@ async function getAudioFromIndexedDB() {
 }
 function RedirectPage() {
   const email = new URLSearchParams(window.location.search).get('email');
+  
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
@@ -59,9 +75,10 @@ function RedirectPage() {
           console.log("audioChunk added", event.data);
         }
       };
+      
       mediaRecorder.onstop = async () => {
         console.log("Recording stopped, audioChunks:", audioChunks);
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm; codecs=opus' });
         try {
           await saveAudioToIndexedDB(audioBlob);
           const audioUrl = URL.createObjectURL(audioBlob);
