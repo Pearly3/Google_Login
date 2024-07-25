@@ -1,16 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { openDB } from 'idb';
 async function saveAudioToIndexedDB(blob) {
-  const db = await openDB('audioDB', 1, {
-    upgrade(db) {
-      db.createObjectStore('audioStore');
-    },
-  });
-  await db.put('audioStore', blob, 'audioBlob');
+  try {
+    const db = await openDB('audioDB', 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains('audioStore')) {
+          db.createObjectStore('audioStore');
+        }
+      },
+    });
+    await db.put('audioStore', blob, 'audioBlob');
+  } catch (error) {
+    console.error('Error saving audio to IndexedDB:', error);
+  }
 }
 async function getAudioFromIndexedDB() {
-  const db = await openDB('audioDB', 1);
-  return await db.get('audioStore', 'audioBlob');
+  try {
+    const db = await openDB('audioDB', 1);
+    return await db.get('audioStore', 'audioBlob');
+  } catch (error) {
+    console.error('Error retrieving audio from IndexedDB:', error);
+    return null;
+  }
 }
 function RedirectPage() {
   const email = new URLSearchParams(window.location.search).get('email');
@@ -32,21 +43,29 @@ function RedirectPage() {
       
       mediaRecorder.onstop = async () => {
         console.log("Recording stopped, audioChunks:", audioChunks);
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        await saveAudioToIndexedDB(audioBlob);
-        const audioUrl = URL.createObjectURL(audioBlob);
-        console.log("Audio URL generated", audioUrl);
-        setAudioURL(audioUrl);
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+        try {
+          await saveAudioToIndexedDB(audioBlob);
+          const audioUrl = URL.createObjectURL(audioBlob);
+          console.log("Audio URL generated", audioUrl);
+          setAudioURL(audioUrl);
+        } catch (error) {
+          console.error("Failed saving audioBlob or creating URL:", error);
+        }
         setAudioChunks([]);
       };
     }
   }, [mediaRecorder, audioChunks]);
   useEffect(() => {
     (async () => {
-      const audioBlob = await getAudioFromIndexedDB();
-      if (audioBlob) {
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setAudioURL(audioUrl);
+      try {
+        const audioBlob = await getAudioFromIndexedDB();
+        if (audioBlob) {
+          const audioUrl = URL.createObjectURL(audioBlob);
+          setAudioURL(audioUrl);
+        }
+      } catch (error) {
+        console.error("Error during audio retrieval from IndexedDB:", error);
       }
     })();
   }, []);
