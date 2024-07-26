@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { openDB } from 'idb';
+import axios from 'axios';
 import FetchData from './FetchData';
 // Initialize IndexedDB with detailed logging
 async function initializeDB() {
@@ -64,6 +65,8 @@ function RedirectPage() {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
+  const [flaskMessage, setFlaskMessage] = useState("");
+  // Handle mediaRecorder events
   useEffect(() => {
     console.log("mediaRecorder has been set", mediaRecorder);
     if (mediaRecorder) {
@@ -89,19 +92,37 @@ function RedirectPage() {
       };
     }
   }, [mediaRecorder, audioChunks]);
+  // Retrieve audio from IndexedDB on component mount
   useEffect(() => {
     (async () => {
+      console.log("Attempting to retrieve audio from IndexedDB");
       try {
         const audioBlob = await getAudioFromIndexedDB();
         if (audioBlob) {
           const audioUrl = URL.createObjectURL(audioBlob);
+          console.log("Audio URL generated from IndexedDB", audioUrl);
           setAudioURL(audioUrl);
+        } else {
+          console.log("No audio found in IndexedDB");
         }
       } catch (error) {
         console.error("Error during audio retrieval from IndexedDB:", error);
       }
     })();
   }, []);
+  // Fetch message from Flask backend on component mount
+  useEffect(() => {
+    const fetchMessage = async () => {
+      try {
+        const response = await axios.get("https://your-flask-backend-url/api/test");
+        setFlaskMessage(response.data.message);
+      } catch (error) {
+        console.error("Error fetching message from Flask:", error);
+      }
+    };
+    fetchMessage();
+  }, []);
+  // Start recording audio
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -115,6 +136,7 @@ function RedirectPage() {
       console.error("Error accessing microphone", err);
     }
   };
+  // Stop recording audio
   const stopRecording = () => {
     if (mediaRecorder) {
       mediaRecorder.stop();
@@ -130,6 +152,7 @@ function RedirectPage() {
       ) : (
         <p>No email found!</p>
       )}
+      {flaskMessage && <p>{flaskMessage}</p>}
       <FetchData />
       <div>
         <button onClick={isRecording ? stopRecording : startRecording} style={{ marginBottom: '20px' }}>
