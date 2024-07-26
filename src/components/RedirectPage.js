@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { openDB } from 'idb';
+import FetchData from './FetchData';
 // Initialize IndexedDB with detailed logging
 async function initializeDB() {
   try {
@@ -25,7 +26,6 @@ async function saveAudioToIndexedDB(blob) {
     console.error('DB initialization failed');
     return;
   }
-  
   try {
     const tx = db.transaction('audioStore', 'readwrite');
     const store = tx.objectStore('audioStore');
@@ -60,7 +60,6 @@ async function getAudioFromIndexedDB() {
 }
 function RedirectPage() {
   const email = new URLSearchParams(window.location.search).get('email');
-  
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
@@ -75,7 +74,6 @@ function RedirectPage() {
           console.log("audioChunk added", event.data);
         }
       };
-      
       mediaRecorder.onstop = async () => {
         console.log("Recording stopped, audioChunks:", audioChunks);
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm; codecs=opus' });
@@ -132,6 +130,7 @@ function RedirectPage() {
       ) : (
         <p>No email found!</p>
       )}
+      <FetchData />
       <div>
         <button onClick={isRecording ? stopRecording : startRecording} style={{ marginBottom: '20px' }}>
           {isRecording ? 'Stop Recording' : 'Start Recording'}
