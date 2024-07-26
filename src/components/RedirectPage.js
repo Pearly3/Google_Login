@@ -5,6 +5,7 @@ import FetchData from './FetchData';
 // Initialize IndexedDB with detailed logging
 async function initializeDB() {
   try {
+    console.log("Initializing IndexedDB...");
     const db = await openDB('audioDB', 1, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('audioStore')) {
@@ -28,6 +29,7 @@ async function saveAudioToIndexedDB(blob) {
     return;
   }
   try {
+    console.log("Saving audio to IndexedDB...");
     const tx = db.transaction('audioStore', 'readwrite');
     const store = tx.objectStore('audioStore');
     await store.put(blob, 'audioBlob');
@@ -72,23 +74,27 @@ function RedirectPage() {
     if (mediaRecorder) {
       mediaRecorder.ondataavailable = (event) => {
         console.log("ondataavailable event", event);
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           setAudioChunks((prev) => [...prev, event.data]);
           console.log("audioChunk added", event.data);
         }
       };
       mediaRecorder.onstop = async () => {
         console.log("Recording stopped, audioChunks:", audioChunks);
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm; codecs=opus' });
         try {
-          await saveAudioToIndexedDB(audioBlob);
-          const audioUrl = URL.createObjectURL(audioBlob);
-          console.log("Audio URL generated", audioUrl);
-          setAudioURL(audioUrl);
+          if (audioChunks.length > 0) {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm; codecs=opus' });
+            await saveAudioToIndexedDB(audioBlob);
+            const audioUrl = URL.createObjectURL(audioBlob);
+            console.log("Audio URL generated", audioUrl);
+            setAudioURL(audioUrl);
+            setAudioChunks([]);
+          } else {
+            console.error('No audio data available to save.');
+          }
         } catch (error) {
           console.error("Failed saving audioBlob or creating URL:", error);
         }
-        setAudioChunks([]);
       };
     }
   }, [mediaRecorder, audioChunks]);
